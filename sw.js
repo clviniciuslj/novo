@@ -19,7 +19,7 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(title, options);
 });
 
-const CACHE = "laranjeiras-admin-v3";
+const CACHE = "laranjeiras-admin-v4";
 const ASSETS = ["./index.html", "./admin.css", "./admin.js", "./firebase-config.js", "./manifest.json", "./icon-admin.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
