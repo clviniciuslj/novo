@@ -992,7 +992,7 @@ function renderFila(animar = false) {
       </div>
       <div class="queue-meta">
         <span>${previsaoHtml}</span>
-        <span class="dot"></span><span>Chegou ${chegada}</span>
+        <span class="dot"></span><span>${chegada}</span>
         <span class="dot"></span><span>${escaparHtml(detalhes)}</span>
       </div>
       <div class="queue-actions">
