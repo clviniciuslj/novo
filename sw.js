@@ -19,7 +19,7 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(title, options);
 });
 
-const CACHE = "laranjeiras-admin-v1";
+const CACHE = "laranjeiras-admin-v2";
 const ASSETS = ["./admin.html", "./admin.css", "./admin.js", "./firebase-config.js", "./manifest.json", "./icon-admin.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -34,7 +34,18 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Network-first: sempre busca a versão mais nova online; só usa o cache como
+// fallback quando o dispositivo está offline. Evita servir telas desatualizadas
+// depois de um deploy novo.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
 });
