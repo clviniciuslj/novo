@@ -300,6 +300,8 @@ document.getElementById("addPanelToggle").addEventListener("click", () => {
   document.getElementById("addPanelToggle").closest(".add-panel").classList.toggle("open");
 });
 
+document.getElementById("queueList").addEventListener("scroll", () => atualizarSombraFila(), { passive: true });
+
 (function setupSwipeTelas() {
   let startX = null, startY = null, decided = false, isHorizontal = false;
   screensWrap.addEventListener("touchstart", (e) => {
@@ -945,6 +947,14 @@ function atualizarProgressoQuadra(q) {
 // ---------- Render: queue ----------
 
 const ehDispositivoTouch = window.matchMedia("(pointer: coarse)").matches;
+let posicoesAnteriores = new Map();
+
+function atualizarSombraFila() {
+  const corpo = document.getElementById("queueList");
+  if (!corpo) return;
+  const temMais = corpo.scrollHeight > corpo.clientHeight + 4 && corpo.scrollTop + corpo.clientHeight < corpo.scrollHeight - 4;
+  corpo.classList.toggle("has-more", temMais);
+}
 
 function renderFila(animar = false) {
   const countEl = document.getElementById("filaCount");
@@ -953,6 +963,8 @@ function renderFila(animar = false) {
 
   if (fila.length === 0) {
     corpo.innerHTML = `<div class="empty-state-rich"><i class="ri-walk-line"></i><strong>Fila vazia</strong><span>Adicione um jogo para iniciar a organização.</span></div>`;
+    corpo.classList.remove("has-more");
+    posicoesAnteriores = new Map();
     return;
   }
 
@@ -984,9 +996,16 @@ function renderFila(animar = false) {
     const podeAvisar = idx === 0 && inscricaoOptouWhatsapp(j, contatoPrivado);
     const btnWpp = podeAvisar ? `<button class="btn-wpp-q" onclick="avisarWhatsapp('${escaparAttr(chaveFila)}', '${escaparAttr(numeroWhatsapp)}', ${idx + 1}, '${escaparAttr(j._quadraPrevista || "-")}', '${escaparAttr(j._horaPrevista || "--:--")}')" title="Avisar por WhatsApp"><i class="ri-whatsapp-line"></i></button>` : "";
 
+    const posicaoAtual = idx + 1;
+    const posicaoAntiga = posicoesAnteriores.get(j.id);
+    const posMudou = posicaoAntiga !== undefined && posicaoAntiga !== posicaoAtual;
+    const posHtml = posMudou
+      ? `<span class="queue-pos pos-anim"><span class="pos-old">#${posicaoAntiga}</span><span class="pos-new">#${posicaoAtual}</span></span>`
+      : `<span class="queue-pos">#${posicaoAtual}</span>`;
+
     const itemHtml = `<div class="queue-item">
       <div class="queue-item-top">
-        <span class="queue-pos">#${idx + 1}</span>
+        ${posHtml}
         <div class="queue-names">${formatarNomesPareados(j.jogadores)}</div>
         <span class="type-chip ${(j.duracao || 45) === 60 ? "dupla" : "simples"}">${tipoTexto}</span>
       </div>
@@ -1016,6 +1035,9 @@ function renderFila(animar = false) {
   corpo.classList.toggle("queue-list-animate", animar);
   corpo.innerHTML = html.join("");
   if (ehDispositivoTouch) ativarSwipeParaRemover();
+
+  posicoesAnteriores = new Map(fila.map((j, idx) => [j.id, idx + 1]));
+  atualizarSombraFila();
 }
 
 function ativarSwipeParaRemover() {
