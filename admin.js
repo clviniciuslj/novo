@@ -60,6 +60,15 @@ function escaparHtml(v) {
   return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 function escaparAttr(v) { return String(v ?? "").replace(/'/g, "&#39;").replace(/"/g, "&quot;"); }
+function formatarNomesPareados(jogadores = []) {
+  const nomes = (jogadores || []).filter(Boolean).map((n) => escaparHtml(n));
+  if (nomes.length === 0) return "";
+  const linhas = [];
+  for (let i = 0; i < nomes.length; i += 2) {
+    linhas.push(nomes.slice(i, i + 2).join(" • "));
+  }
+  return linhas.map((l) => `<div class="nomes-linha">${l}</div>`).join("");
+}
 function maskQL(v) {
   const n = v.replace(/\D/g, "").slice(0, 4);
   return n.length <= 2 ? n : `${n.slice(0, 2)}/${n.slice(2)}`;
@@ -277,10 +286,12 @@ const tabMenu = document.getElementById("tabMenu");
 let telaAtual = 0;
 
 function irParaTela(idx) {
+  if (telaAtual === idx) return;
   telaAtual = idx;
   screensTrack.classList.toggle("go-menu", idx === 1);
   tabInicio.classList.toggle("active", idx === 0);
   tabMenu.classList.toggle("active", idx === 1);
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 tabInicio.addEventListener("click", () => irParaTela(0));
 tabMenu.addEventListener("click", () => irParaTela(1));
@@ -891,7 +902,7 @@ function renderQuadras() {
         <div class="court-free-msg-rich"><i class="ri-tennis-ball-line"></i></div>
         <div class="court-players">Livre</div>
         <div class="court-free-msg">Disponível para próximo jogo</div>
-        <button class="btn btn-solid btn-block" onclick="chamar(${q.id})" ${fila.length === 0 ? "disabled" : ""}><i class="ri-megaphone-line"></i> Chamar</button>
+        <button class="btn btn-solid btn-block ${fila.length === 0 ? "is-empty" : ""}" onclick="chamar(${q.id})"><i class="ri-megaphone-line"></i> Chamar</button>
       </div>`;
     }
     const duracao = q.jogo?.duracao || 45;
@@ -911,7 +922,7 @@ function renderQuadras() {
       <div class="court-top">
         <div class="court-badge">Q${q.id}</div>
         <div>
-          <div class="court-players">${escaparHtml(q.jogo?.nomes || "")}</div>
+          <div class="court-players">${formatarNomesPareados(q.jogo?.jogadores)}</div>
           <div class="court-meta">${statusTexto} <span class="type-chip ${duracao === 60 ? "dupla" : "simples"}">${tipoTexto}</span></div>
         </div>
       </div>
@@ -976,7 +987,7 @@ function renderFila(animar = false) {
     const itemHtml = `<div class="queue-item">
       <div class="queue-item-top">
         <span class="queue-pos">#${idx + 1}</span>
-        <span class="queue-names">${escaparHtml((j.jogadores || []).join(" / "))}</span>
+        <div class="queue-names">${formatarNomesPareados(j.jogadores)}</div>
         <span class="type-chip ${(j.duracao || 45) === 60 ? "dupla" : "simples"}">${tipoTexto}</span>
       </div>
       <div class="queue-meta">
@@ -1097,6 +1108,7 @@ onValue(ref(db, "fila"), (snapshot) => {
   const houveMudanca = filaJaCarregouUmaVez && (filaKeysAntes.length !== filaKeys.length || filaKeysAntes.some((k, i) => k !== filaKeys[i]));
   filaJaCarregouUmaVez = true;
   renderFila(houveMudanca);
+  renderQuadras();
 });
 
 onValue(ref(db, "filaContatos"), (snapshot) => {
