@@ -131,6 +131,40 @@ const avisoAdmin = (texto, titulo = "Aviso") => abrirModalGeral({ titulo, texto,
 const confirmarAdmin = (texto, titulo = "Confirmar", perigo = false) => abrirModalGeral({ titulo, texto, tipo: perigo ? "danger" : "confirm" });
 const perguntarAdmin = (texto, titulo = "Informar", placeholder = "") => abrirModalGeral({ titulo, texto, tipo: "prompt", placeholder });
 
+function escolherQuadra({ titulo = "Escolher quadra", texto = "", idsDisponiveis = [] } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modalQuadra");
+    const tituloEl = document.getElementById("modalQuadraTitulo");
+    const textoEl = document.getElementById("modalQuadraTexto");
+    const grid = document.getElementById("modalQuadraGrid");
+    const btnCancelar = document.getElementById("modalQuadraCancelar");
+
+    tituloEl.textContent = titulo;
+    textoEl.textContent = texto;
+    grid.innerHTML = idsDisponiveis.map((id) => {
+      const q = quadras.find((x) => x.id === id);
+      const ocupada = !!q?.ocupada;
+      return `<button type="button" class="quadra-pick-btn ${ocupada ? "ocupada" : "livre"}" data-id="${id}">
+        <strong>Q${id}</strong>
+        <small>${ocupada ? "Ocupada" : "Livre"}</small>
+      </button>`;
+    }).join("");
+
+    function fechar(valor) {
+      overlay.classList.remove("show");
+      grid.querySelectorAll("button").forEach((b) => (b.onclick = null));
+      btnCancelar.onclick = null;
+      resolve(valor);
+    }
+
+    grid.querySelectorAll("button").forEach((b) => {
+      b.onclick = () => fechar(Number(b.dataset.id));
+    });
+    btnCancelar.onclick = () => fechar(null);
+    overlay.classList.add("show");
+  });
+}
+
 // ---------- Snackbar ----------
 
 function mostrarSnackbar(texto, tipo = "info") {
@@ -239,7 +273,7 @@ onAuthStateChanged(auth, async (user) => {
 
 async function registrarServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
-  return navigator.serviceWorker.register("sw.js?v=1.0", { scope: "/" });
+  return navigator.serviceWorker.register("sw.js?v=1.0");
 }
 
 async function ativarNotificacoes() {
@@ -270,7 +304,11 @@ if (messaging) {
 document.getElementById("themeToggle").addEventListener("click", () => {
   document.body.classList.toggle("dark");
   const icon = document.querySelector("#themeToggle i");
-  icon.className = document.body.classList.contains("dark") ? "ri-sun-line" : "ri-moon-line";
+  icon.classList.add("icon-swap");
+  setTimeout(() => {
+    icon.className = document.body.classList.contains("dark") ? "ri-sun-line icon-swap" : "ri-moon-line icon-swap";
+    requestAnimationFrame(() => icon.classList.remove("icon-swap"));
+  }, 110);
   localStorage.setItem("tema", document.body.classList.contains("dark") ? "dark" : "light");
 });
 if (localStorage.getItem("tema") === "dark") {
@@ -281,9 +319,16 @@ if (localStorage.getItem("tema") === "dark") {
 
 const screensTrack = document.getElementById("screensTrack");
 const screensWrap = document.getElementById("screensWrap");
+const screenInicio = document.getElementById("screenInicio");
+const screenMenu = document.getElementById("screenMenu");
 const tabInicio = document.getElementById("tabInicio");
 const tabMenu = document.getElementById("tabMenu");
 let telaAtual = 0;
+
+function ajustarAlturaTela() {
+  const ativo = telaAtual === 0 ? screenInicio : screenMenu;
+  screensWrap.style.height = `${ativo.offsetHeight}px`;
+}
 
 function irParaTela(idx) {
   if (telaAtual === idx) return;
@@ -291,10 +336,15 @@ function irParaTela(idx) {
   screensTrack.classList.toggle("go-menu", idx === 1);
   tabInicio.classList.toggle("active", idx === 0);
   tabMenu.classList.toggle("active", idx === 1);
+  ajustarAlturaTela();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 tabInicio.addEventListener("click", () => irParaTela(0));
 tabMenu.addEventListener("click", () => irParaTela(1));
+
+new ResizeObserver(() => ajustarAlturaTela()).observe(screenInicio);
+new ResizeObserver(() => ajustarAlturaTela()).observe(screenMenu);
+ajustarAlturaTela();
 
 document.getElementById("addPanelToggle").addEventListener("click", () => {
   document.getElementById("addPanelToggle").closest(".add-panel").classList.toggle("open");
@@ -452,10 +502,10 @@ window.chamar = function (i) {
 };
 
 window.chamarDireto = async function (id) {
-  const idsAtivos = getIdsQuadrasAtivas();
-  const resposta = await perguntarAdmin(`Para qual quadra? (${idsAtivos.join(", ")})`, "Chamar para quadra", idsAtivos.join(", "));
-  const i = parseInt(resposta);
-  if (!idsAtivos.includes(i)) return;
+  const idsLivres = getIdsQuadrasAtivas().filter((qid) => !quadras.find((x) => x.id === qid)?.ocupada);
+  if (idsLivres.length === 0) return avisoAdmin("Nenhuma quadra livre no momento.");
+  const i = await escolherQuadra({ titulo: "Chamar para qual quadra?", idsDisponiveis: idsLivres });
+  if (!i) return;
   const q = quadras.find((x) => x.id === i);
   if (q?.ocupada) return avisoAdmin("Quadra ocupada!");
   const idx = fila.findIndex((x) => x.id === id);
@@ -535,10 +585,10 @@ window.repetirJogo = async function (i) {
 };
 
 window.mover = async function (o) {
-  const idsAtivos = getIdsQuadrasAtivas();
-  const resp = await perguntarAdmin(`Para qual quadra? (${idsAtivos.join(", ")})`, "Mover para quadra", idsAtivos.join(", "));
-  const d = parseInt(resp);
-  if (!idsAtivos.includes(d) || d === o) return;
+  const idsAtivos = getIdsQuadrasAtivas().filter((id) => id !== o);
+  if (idsAtivos.length === 0) return avisoAdmin("Não há outra quadra ativa para mover.");
+  const d = await escolherQuadra({ titulo: "Mover para qual quadra?", idsDisponiveis: idsAtivos });
+  if (!d) return;
   const qO = quadras.find((x) => x.id === o);
   const qD = quadras.find((x) => x.id === d);
   if (!qO || !qD) return avisoAdmin("Quadra não encontrada.");
@@ -562,6 +612,7 @@ document.getElementById("tipoJogoGroup").addEventListener("click", (e) => {
   if (!btn) return;
   tipoSelecionado = btn.dataset.valor;
   document.querySelectorAll("#tipoJogoGroup .segmented-opt").forEach((b) => b.classList.toggle("active", b === btn));
+  document.getElementById("tipoJogoGroup").classList.toggle("second-active", tipoSelecionado === "60");
   document.getElementById("playersGrid").classList.toggle("is-duplas", tipoSelecionado === "60");
 });
 
@@ -778,6 +829,7 @@ window.toggleDia = function (id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.toggle("show");
+  el.previousElementSibling?.classList.toggle("expanded", el.classList.contains("show"));
   if (el.classList.contains("show")) historicoDiasExpandidos.add(id);
   else historicoDiasExpandidos.delete(id);
 };
@@ -806,7 +858,7 @@ function renderHistoricoAgrupado() {
   datas.forEach((dk) => {
     const idDia = `dia-${dk.replace(/\//g, "-")}`;
     const expandido = historicoDiasExpandidos.has(idDia);
-    html += `<div class="hist-day"><div class="hist-day-head" onclick="toggleDia('${idDia}')"><span>${dk} (${ag[dk].length})</span><i class="ri-arrow-down-s-line"></i></div><div class="hist-day-games ${expandido ? "show" : ""}" id="${idDia}">`;
+    html += `<div class="hist-day"><div class="hist-day-head ${expandido ? "expanded" : ""}" onclick="toggleDia('${idDia}')"><span>${dk} (${ag[dk].length})</span><i class="ri-arrow-down-s-line"></i></div><div class="hist-day-games ${expandido ? "show" : ""}" id="${idDia}">`;
     ag[dk].forEach((j) => {
       html += `<div class="hist-game-item"><div><strong>${escaparHtml(j.n)}</strong><br><small>${j.t} - ${j.f} · ${escaparHtml(j.detalhes || "")} · Q${j.q}</small></div><button onclick="apagarDoHistorico(${j.id})"><i class="ri-delete-bin-line"></i></button></div>`;
     });
@@ -1087,6 +1139,14 @@ function ativarSwipeParaRemover() {
 // ---------- Firebase listeners ----------
 
 await adminReady;
+
+onValue(ref(db, ".info/connected"), (snapshot) => {
+  const conectado = snapshot.val() === true;
+  const row = document.getElementById("connStatus");
+  const text = document.getElementById("connText");
+  row.classList.toggle("offline", !conectado);
+  text.textContent = conectado ? "Conectado" : "Sem conexão — mostrando dados salvos";
+});
 
 onValue(ref(db, "config/quadras"), (snapshot) => {
   if (!snapshot.exists()) {

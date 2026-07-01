@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Laranjeiras · Painel</title>
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#2563eb" />
+<meta name="theme-color" content="#16a34a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -41,6 +41,7 @@
 <div class="page">
 
   <header class="topbar">
+    <span class="topbar-spacer" aria-hidden="true"></span>
     <div class="brand">
       <span class="brand-mark"><img src="icon-admin.png" alt="Laranjeiras" /></span>
       <div>
@@ -111,6 +112,11 @@
       <section class="screen" id="screenMenu">
         <main>
 
+          <div class="status-row" id="connStatus">
+            <span class="status-dot" id="connDot"></span>
+            <span id="connText">Conectado</span>
+          </div>
+
           <div class="account-card">
             <div class="account-avatar"><i class="ri-user-3-line"></i></div>
             <div>
@@ -158,6 +164,19 @@
     <button type="button" class="tabbar-btn active" id="tabInicio" data-screen="0"><i class="ri-home-5-line"></i> Início</button>
     <button type="button" class="tabbar-btn" id="tabMenu" data-screen="1"><i class="ri-settings-3-line"></i> Menu</button>
   </nav>
+</div>
+
+<!-- MODAL: escolher quadra (mover / chamar direto) -->
+<div class="modal-veil" id="modalQuadra">
+  <div class="modal-card modal-card-sm">
+    <div class="modal-icon"><i class="ri-layout-grid-line"></i></div>
+    <h3 id="modalQuadraTitulo">Escolher quadra</h3>
+    <p id="modalQuadraTexto"></p>
+    <div class="quadra-pick-grid" id="modalQuadraGrid"></div>
+    <div class="modal-actions single">
+      <button class="btn btn-ghost btn-block" id="modalQuadraCancelar">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: editar jogo da fila -->
